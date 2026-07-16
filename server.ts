@@ -16,7 +16,20 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// In-memory cache to prevent hitting Agnes AI API rate limits (HTTP 429) with duplicate requests
+let cachedModels: string[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 3600 * 1000; // 1 hour
+
+let cachedSuccessEndpoint: { url: string; type: 'video' | 'image' | 'chat'; model: string } | null = null;
+
 async function discoverModels(apiBase: string, cleanBase: string, apiKey: string): Promise<string[]> {
+  const now = Date.now();
+  if (cachedModels && (now - lastCacheTime < CACHE_TTL)) {
+    console.log(`[Discovery] Returning cached models list (${cachedModels.length} models)`);
+    return cachedModels;
+  }
+
   const discovered: string[] = [];
   const modelEndpoints = [
     `${cleanBase}/v1/models`,
@@ -61,6 +74,8 @@ async function discoverModels(apiBase: string, cleanBase: string, apiKey: string
         }
         if (discovered.length > 0) {
           console.log(`[Discovery] Discovered ${discovered.length} models:`, discovered);
+          cachedModels = discovered;
+          lastCacheTime = now;
           break;
         }
       } else {
@@ -148,7 +163,18 @@ app.post('/api/generate-video', async (req, res) => {
     let successData: any = null;
     let lastErrorMsg = "";
 
-    for (const conf of uniqueConfigs) {
+    // Prioritize cached successful endpoint if it exists
+    const endpointsToTry = [...uniqueConfigs];
+    if (cachedSuccessEndpoint) {
+      const cachedIdx = endpointsToTry.findIndex(c => c.url === cachedSuccessEndpoint!.url);
+      if (cachedIdx !== -1) {
+        const [cachedConf] = endpointsToTry.splice(cachedIdx, 1);
+        endpointsToTry.unshift(cachedConf);
+        console.log(`[Cache] Prioritizing last working endpoint: ${cachedConf.url}`);
+      }
+    }
+
+    for (const conf of endpointsToTry) {
       if (successData) break;
 
       // Determine models to use based on endpoint type and discovered models
@@ -165,6 +191,16 @@ app.post('/api/generate-video', async (req, res) => {
       }
 
       modelsToTry = Array.from(new Set(modelsToTry));
+
+      // Prioritize last working model on this endpoint
+      if (cachedSuccessEndpoint && cachedSuccessEndpoint.url === conf.url) {
+        const cachedModelIdx = modelsToTry.indexOf(cachedSuccessEndpoint.model);
+        if (cachedModelIdx !== -1) {
+          modelsToTry.splice(cachedModelIdx, 1);
+          modelsToTry.unshift(cachedSuccessEndpoint.model);
+          console.log(`[Cache] Prioritizing last working model: ${cachedSuccessEndpoint.model}`);
+        }
+      }
 
       const bodies: any[] = [];
       for (const m of modelsToTry) {
@@ -246,6 +282,8 @@ app.post('/api/generate-video', async (req, res) => {
 
             if (finalVideoUrl) {
               successData = { ...createData, video_url: finalVideoUrl };
+              cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+              console.log(`[Cache] Cached successful configuration (synchronous): ${conf.url} with model ${body.model}`);
               break;
             }
 
@@ -336,6 +374,8 @@ app.post('/api/generate-video', async (req, res) => {
 
                       if (videoUrl) {
                         successData = { ...pollResult, video_url: videoUrl };
+                        cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+                        console.log(`[Cache] Cached successful configuration (polling): ${conf.url} with model ${body.model}`);
                         pollSuccess = true;
                         break;
                       }
@@ -353,6 +393,8 @@ app.post('/api/generate-video', async (req, res) => {
                           (pollResult.result && (pollResult.result.url || pollResult.result.video_url));
 
                         successData = { ...pollResult, video_url: potentialUrl || "https://assets.mixkit.co/videos/preview/mixkit-flying-pink-and-red-paper-hearts-41484-large.mp4" };
+                        cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+                        console.log(`[Cache] Cached successful configuration (polling completed): ${conf.url} with model ${body.model}`);
                         pollSuccess = true;
                         break;
                       } else if (status === 'failed' || status === 'error' || status === 'cancelled') {

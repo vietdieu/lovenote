@@ -405,14 +405,18 @@ export default function App() {
                 <decor.content size={48} />
               </motion.div>
             ) : (
-              <motion.img 
-                src={decor.content as string} 
-                alt={item.type} 
-                className="w-24 h-24 object-contain mix-blend-multiply" 
-                draggable={false} 
+              <motion.div 
                 animate={currentAnimate}
                 transition={currentTransition}
-              />
+                className="bg-white/95 p-2 rounded-2xl shadow-lg border-2 border-white ring-1 ring-rose-100/20 flex items-center justify-center"
+              >
+                <img 
+                  src={decor.content as string} 
+                  alt={item.type} 
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain" 
+                  draggable={false} 
+                />
+              </motion.div>
             )}
             <div className="absolute -top-10 -right-6 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 p-1 rounded-lg z-60">
               <button onClick={() => scaleDecor(item.id, 0.2)} className="text-xs bg-white rounded-full w-5 h-5">+</button>
