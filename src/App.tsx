@@ -7,6 +7,12 @@ import React, { useState, useRef, useEffect, ComponentType } from 'react';
 import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
+import coupleImg from './assets/images/couple_romantic_icon_1783908155583.jpg';
+import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg';
+import balloonImg from './assets/images/romantic_heart_balloon_1783908331745.jpg';
+import letterImg from './assets/images/love_letter_envelope_1783908344094.jpg';
+import birdsImg from './assets/images/love_birds_1783908354466.jpg';
+
 type SceneType = 'rose' | 'garden' | 'forest' | 'sunset' | 'ocean' | 'sakura' | 'sky' | 'plain';
 type BgStyleType = 'solid' | 'floating' | 'hearts' | 'grid' | 'blobs';
 type FontStyleType = 'playfair' | 'dancing' | 'pacifico' | 'caveat' | 'lora' | 'nunito';
@@ -40,11 +46,11 @@ const decorRegistry: Record<DecorType, { type: 'icon' | 'image', content: Compon
   Cake: { type: 'icon', content: Cake },
   Users: { type: 'icon', content: Users },
   Flower2: { type: 'icon', content: Flower2 },
-  Couple: { type: 'image', content: '/src/assets/images/couple_romantic_icon_1783908155583.jpg' },
-  Bouquet: { type: 'image', content: '/src/assets/images/romantic_bouquet_icon_1783908168429.jpg' },
-  Balloon: { type: 'image', content: '/src/assets/images/romantic_heart_balloon_1783908331745.jpg' },
-  Letter: { type: 'image', content: '/src/assets/images/love_letter_envelope_1783908344094.jpg' },
-  Birds: { type: 'image', content: '/src/assets/images/love_birds_1783908354466.jpg' }
+  Couple: { type: 'image', content: coupleImg },
+  Bouquet: { type: 'image', content: bouquetImg },
+  Balloon: { type: 'image', content: balloonImg },
+  Letter: { type: 'image', content: letterImg },
+  Birds: { type: 'image', content: birdsImg }
 };
 
 const sceneConfig: Record<SceneType, { bg: string; text: string; secondary: string; accent: string; button: string; icon: React.ReactNode }> = {
