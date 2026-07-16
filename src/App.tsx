@@ -352,12 +352,14 @@ export default function App() {
             <input 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
+              onFocus={(e) => e.target.select()}
               className={`text-4xl md:text-6xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all`} 
               placeholder="Nhập tiêu đề..."
             />
             <textarea 
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
+              onFocus={(e) => e.target.select()}
               className={`text-2xl md:text-3xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all resize-y`} 
               placeholder="Nhập lời nhắn..."
             />
@@ -365,7 +367,7 @@ export default function App() {
         ) : (
           <>
             <h1 className={`text-5xl md:text-7xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 transition-all leading-tight ${title === "Nhập chủ đề" ? "opacity-60" : ""}`}>{title}</h1>
-            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh chọn Chỉnh sửa" ? "opacity-60" : ""}`}>{message}</p>
+            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh để cài đặt." ? "opacity-60" : ""}`}>{message}</p>
           </>
         )}
       </div>
