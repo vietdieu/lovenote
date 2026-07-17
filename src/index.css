@@ -9,3 +9,14 @@
   --font-nunito: "Nunito", sans-serif;
   --font-playfair: "Playfair Display", serif;
 }
+
+@layer utilities {
+  .animate-kenburns {
+    animation: kenburns 10s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes kenburns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}

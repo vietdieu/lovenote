@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+import { fal } from '@fal-ai/client';
 
 dotenv.config();
 
@@ -92,6 +93,103 @@ async function discoverModels(apiBase: string, cleanBase: string, apiKey: string
 app.post('/api/generate-video', async (req, res) => {
   try {
     const { title, message, scene, bgStyle, musicTrack, placedItems } = req.body;
+    
+    const runwayKey = process.env.RUNWAY_API_KEY?.trim();
+    const huggingKey = (process.env.hugging_API_KEY || process.env.HUGGING_API_KEY || process.env.HUGGINGFACE_API_KEY)?.trim();
+
+    if (huggingKey) {
+      console.log("Hugging Face API key detected. Generating image...");
+      try {
+        const { HfInference } = await import('@huggingface/inference');
+        const hf = new HfInference(huggingKey);
+        
+        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        
+        const blob = await hf.textToImage({
+          model: 'black-forest-labs/FLUX.1-schnell',
+          inputs: prompt
+        });
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+        
+        let finalVideoUrl = dataUrl;
+        let isAnimated = false;
+
+        if (runwayKey) {
+          console.log("Runway API key detected. Sending image for animation...");
+          try {
+            const RunwayML = (await import('@runwayml/sdk')).default;
+            const runwayClient = new RunwayML({ apiKey: runwayKey });
+            
+            // Use Gen-3 Alpha Turbo to animate the image
+            const createPromise = runwayClient.imageToVideo.create({
+              model: 'gen3a_turbo',
+              promptImage: dataUrl,
+              promptText: prompt,
+            });
+            // Prevent Unhandled Promise Rejection crash if create fails immediately while polling
+            createPromise.catch(() => {});
+            
+            const taskResponse = await createPromise.waitForTaskOutput();
+            
+            finalVideoUrl = taskResponse.output[0];
+            isAnimated = true;
+            console.log("Runway animation succeeded.");
+          } catch (runwayErr: any) {
+            console.log("Runway generation failed (maybe out of credits), falling back to static image:", runwayErr.message);
+          }
+        }
+
+        return res.json({
+          success: true,
+          simulation: false,
+          videoUrl: finalVideoUrl,
+          message: isAnimated ? "Successfully generated video via Runway API!" : "Successfully generated visual via Hugging Face API!",
+          data: { generated_url: finalVideoUrl }
+        });
+      } catch (err: any) {
+        console.error("Hugging Face generation failed:", err);
+        return res.status(500).json({ success: false, error: `Hugging Face failed: ${err.message}` });
+      }
+    }
+
+    // Check if user has provided a FAL_KEY for Pika API
+    const falKey = process.env.FAL_KEY?.trim();
+    if (falKey) {
+      console.log("FAL_KEY detected, using Fal.ai (Pika) for video generation!");
+      try {
+        fal.config({ credentials: falKey });
+        
+        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        
+        const result: any = await fal.subscribe("fal-ai/pika", {
+          input: {
+            prompt: prompt,
+            aspect_ratio: "16:9"
+          }
+        });
+
+        const finalVideoUrl = result?.video?.url || result?.video_url || result?.url;
+        
+        if (finalVideoUrl) {
+          return res.json({
+            success: true,
+            simulation: false,
+            videoUrl: finalVideoUrl,
+            message: "Successfully generated video via Pika (Fal.ai)!",
+            data: result
+          });
+        } else {
+           throw new Error("Video URL not found in Fal response");
+        }
+      } catch (err: any) {
+        console.error("Fal AI generation failed:", err);
+        return res.status(500).json({ success: false, error: `Fal AI / Pika failed: ${err.message}` });
+      }
+    }
+
     const rawApiKey = process.env.AGNES_API_KEY || process.env.VIDEO_KEY_API;
     const apiKey = rawApiKey ? rawApiKey.trim() : "";
     const rawApiBase = process.env.AGNES_API_BASE || 'https://apihub.agnes-ai.com';
