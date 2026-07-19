@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+import { fal } from '@fal-ai/client';
 
 dotenv.config();
 
@@ -16,7 +17,20 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// In-memory cache to prevent hitting Agnes AI API rate limits (HTTP 429) with duplicate requests
+let cachedModels: string[] | null = null;
+let lastCacheTime = 0;
+const CACHE_TTL = 3600 * 1000; // 1 hour
+
+let cachedSuccessEndpoint: { url: string; type: 'video' | 'image' | 'chat'; model: string } | null = null;
+
 async function discoverModels(apiBase: string, cleanBase: string, apiKey: string): Promise<string[]> {
+  const now = Date.now();
+  if (cachedModels && (now - lastCacheTime < CACHE_TTL)) {
+    console.log(`[Discovery] Returning cached models list (${cachedModels.length} models)`);
+    return cachedModels;
+  }
+
   const discovered: string[] = [];
   const modelEndpoints = [
     `${cleanBase}/v1/models`,
@@ -61,6 +75,8 @@ async function discoverModels(apiBase: string, cleanBase: string, apiKey: string
         }
         if (discovered.length > 0) {
           console.log(`[Discovery] Discovered ${discovered.length} models:`, discovered);
+          cachedModels = discovered;
+          lastCacheTime = now;
           break;
         }
       } else {
@@ -77,6 +93,103 @@ async function discoverModels(apiBase: string, cleanBase: string, apiKey: string
 app.post('/api/generate-video', async (req, res) => {
   try {
     const { title, message, scene, bgStyle, musicTrack, placedItems } = req.body;
+    
+    const runwayKey = process.env.RUNWAY_API_KEY?.trim();
+    const huggingKey = (process.env.hugging_API_KEY || process.env.HUGGING_API_KEY || process.env.HUGGINGFACE_API_KEY)?.trim();
+
+    if (huggingKey) {
+      console.log("Hugging Face API key detected. Generating image...");
+      try {
+        const { HfInference } = await import('@huggingface/inference');
+        const hf = new HfInference(huggingKey);
+        
+        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        
+        const blob = await hf.textToImage({
+          model: 'black-forest-labs/FLUX.1-schnell',
+          inputs: prompt
+        });
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString('base64');
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+        
+        let finalVideoUrl = dataUrl;
+        let isAnimated = false;
+
+        if (runwayKey) {
+          console.log("Runway API key detected. Sending image for animation...");
+          try {
+            const RunwayML = (await import('@runwayml/sdk')).default;
+            const runwayClient = new RunwayML({ apiKey: runwayKey });
+            
+            // Use Gen-3 Alpha Turbo to animate the image
+            const createPromise = runwayClient.imageToVideo.create({
+              model: 'gen3a_turbo',
+              promptImage: dataUrl,
+              promptText: prompt,
+            });
+            // Prevent Unhandled Promise Rejection crash if create fails immediately while polling
+            createPromise.catch(() => {});
+            
+            const taskResponse = await createPromise.waitForTaskOutput();
+            
+            finalVideoUrl = taskResponse.output[0];
+            isAnimated = true;
+            console.log("Runway animation succeeded.");
+          } catch (runwayErr: any) {
+            console.log("Runway generation failed (maybe out of credits), falling back to static image:", runwayErr.message);
+          }
+        }
+
+        return res.json({
+          success: true,
+          simulation: false,
+          videoUrl: finalVideoUrl,
+          message: isAnimated ? "Successfully generated video via Runway API!" : "Successfully generated visual via Hugging Face API!",
+          data: { generated_url: finalVideoUrl }
+        });
+      } catch (err: any) {
+        console.error("Hugging Face generation failed:", err);
+        return res.status(500).json({ success: false, error: `Hugging Face failed: ${err.message}` });
+      }
+    }
+
+    // Check if user has provided a FAL_KEY for Pika API
+    const falKey = process.env.FAL_KEY?.trim();
+    if (falKey) {
+      console.log("FAL_KEY detected, using Fal.ai (Pika) for video generation!");
+      try {
+        fal.config({ credentials: falKey });
+        
+        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        
+        const result: any = await fal.subscribe("fal-ai/pika", {
+          input: {
+            prompt: prompt,
+            aspect_ratio: "16:9"
+          }
+        });
+
+        const finalVideoUrl = result?.video?.url || result?.video_url || result?.url;
+        
+        if (finalVideoUrl) {
+          return res.json({
+            success: true,
+            simulation: false,
+            videoUrl: finalVideoUrl,
+            message: "Successfully generated video via Pika (Fal.ai)!",
+            data: result
+          });
+        } else {
+           throw new Error("Video URL not found in Fal response");
+        }
+      } catch (err: any) {
+        console.error("Fal AI generation failed:", err);
+        return res.status(500).json({ success: false, error: `Fal AI / Pika failed: ${err.message}` });
+      }
+    }
+
     const rawApiKey = process.env.AGNES_API_KEY || process.env.VIDEO_KEY_API;
     const apiKey = rawApiKey ? rawApiKey.trim() : "";
     const rawApiBase = process.env.AGNES_API_BASE || 'https://apihub.agnes-ai.com';
@@ -148,7 +261,18 @@ app.post('/api/generate-video', async (req, res) => {
     let successData: any = null;
     let lastErrorMsg = "";
 
-    for (const conf of uniqueConfigs) {
+    // Prioritize cached successful endpoint if it exists
+    const endpointsToTry = [...uniqueConfigs];
+    if (cachedSuccessEndpoint) {
+      const cachedIdx = endpointsToTry.findIndex(c => c.url === cachedSuccessEndpoint!.url);
+      if (cachedIdx !== -1) {
+        const [cachedConf] = endpointsToTry.splice(cachedIdx, 1);
+        endpointsToTry.unshift(cachedConf);
+        console.log(`[Cache] Prioritizing last working endpoint: ${cachedConf.url}`);
+      }
+    }
+
+    for (const conf of endpointsToTry) {
       if (successData) break;
 
       // Determine models to use based on endpoint type and discovered models
@@ -165,6 +289,16 @@ app.post('/api/generate-video', async (req, res) => {
       }
 
       modelsToTry = Array.from(new Set(modelsToTry));
+
+      // Prioritize last working model on this endpoint
+      if (cachedSuccessEndpoint && cachedSuccessEndpoint.url === conf.url) {
+        const cachedModelIdx = modelsToTry.indexOf(cachedSuccessEndpoint.model);
+        if (cachedModelIdx !== -1) {
+          modelsToTry.splice(cachedModelIdx, 1);
+          modelsToTry.unshift(cachedSuccessEndpoint.model);
+          console.log(`[Cache] Prioritizing last working model: ${cachedSuccessEndpoint.model}`);
+        }
+      }
 
       const bodies: any[] = [];
       for (const m of modelsToTry) {
@@ -246,6 +380,8 @@ app.post('/api/generate-video', async (req, res) => {
 
             if (finalVideoUrl) {
               successData = { ...createData, video_url: finalVideoUrl };
+              cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+              console.log(`[Cache] Cached successful configuration (synchronous): ${conf.url} with model ${body.model}`);
               break;
             }
 
@@ -336,6 +472,8 @@ app.post('/api/generate-video', async (req, res) => {
 
                       if (videoUrl) {
                         successData = { ...pollResult, video_url: videoUrl };
+                        cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+                        console.log(`[Cache] Cached successful configuration (polling): ${conf.url} with model ${body.model}`);
                         pollSuccess = true;
                         break;
                       }
@@ -353,6 +491,8 @@ app.post('/api/generate-video', async (req, res) => {
                           (pollResult.result && (pollResult.result.url || pollResult.result.video_url));
 
                         successData = { ...pollResult, video_url: potentialUrl || "https://assets.mixkit.co/videos/preview/mixkit-flying-pink-and-red-paper-hearts-41484-large.mp4" };
+                        cachedSuccessEndpoint = { url: conf.url, type: conf.type, model: body.model };
+                        console.log(`[Cache] Cached successful configuration (polling completed): ${conf.url} with model ${body.model}`);
                         pollSuccess = true;
                         break;
                       } else if (status === 'failed' || status === 'error' || status === 'cancelled') {

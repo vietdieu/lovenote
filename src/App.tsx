@@ -95,6 +95,7 @@ export default function App() {
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
   const [decorColor, setDecorColor] = useState<string>('#f43f5e');
+  const [selectedDecorId, setSelectedDecorId] = useState<number | null>(null);
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
@@ -261,7 +262,10 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}>
+    <div 
+      className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
+      onClick={() => setSelectedDecorId(null)}
+    >
       {currentMusic.url && (
         <audio 
           src={currentMusic.url} 
@@ -352,12 +356,14 @@ export default function App() {
             <input 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
+              onFocus={(e) => e.target.select()}
               className={`text-4xl md:text-6xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all`} 
               placeholder="Nhập tiêu đề..."
             />
             <textarea 
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
+              onFocus={(e) => e.target.select()}
               className={`text-2xl md:text-3xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all resize-y`} 
               placeholder="Nhập lời nhắn..."
             />
@@ -365,7 +371,7 @@ export default function App() {
         ) : (
           <>
             <h1 className={`text-5xl md:text-7xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 transition-all leading-tight ${title === "Nhập chủ đề" ? "opacity-60" : ""}`}>{title}</h1>
-            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh chọn Chỉnh sửa" ? "opacity-60" : ""}`}>{message}</p>
+            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh để cài đặt." ? "opacity-60" : ""}`}>{message}</p>
           </>
         )}
       </div>
@@ -388,6 +394,11 @@ export default function App() {
             key={item.id}
             drag
             dragMomentum={false}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setSelectedDecorId(item.id);
+            }}
+            onClick={(e) => e.stopPropagation()}
             onDragEnd={(_, info) => {
               setPlacedItems(prev => prev.map(p => p.id === item.id ? { ...p, x: p.x + info.offset.x, y: p.y + info.offset.y } : p));
             }}
@@ -405,16 +416,20 @@ export default function App() {
                 <decor.content size={48} />
               </motion.div>
             ) : (
-              <motion.img 
-                src={decor.content as string} 
-                alt={item.type} 
-                className="w-24 h-24 object-contain mix-blend-multiply" 
-                draggable={false} 
+              <motion.div 
                 animate={currentAnimate}
                 transition={currentTransition}
-              />
+                className="bg-white/95 p-2 rounded-2xl shadow-lg border-2 border-white ring-1 ring-rose-100/20 flex items-center justify-center"
+              >
+                <img 
+                  src={decor.content as string} 
+                  alt={item.type} 
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain" 
+                  draggable={false} 
+                />
+              </motion.div>
             )}
-            <div className="absolute -top-10 -right-6 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 p-1 rounded-lg z-60">
+            <div className={`absolute -top-10 -right-6 flex flex-col gap-1 transition-opacity bg-white/50 p-1 rounded-lg z-60 ${selectedDecorId === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
               <button onClick={() => scaleDecor(item.id, 0.2)} className="text-xs bg-white rounded-full w-5 h-5">+</button>
               <button onClick={() => scaleDecor(item.id, -0.2)} className="text-xs bg-white rounded-full w-5 h-5">-</button>
               <button onClick={() => rotateDecor(item.id, 15)} className="text-xs bg-white rounded-full w-5 h-5">↻</button>
@@ -729,11 +744,13 @@ export default function App() {
                           generatedVideoUrl.endsWith('.gif') ||
                           generatedVideoUrl.includes('image')
                         ) ? (
-                          <img
-                            src={generatedVideoUrl}
-                            alt="AI generated greeting card"
-                            className="w-full h-full object-contain"
-                          />
+                          <div className="w-full h-full overflow-hidden">
+                            <img
+                              src={generatedVideoUrl}
+                              alt="AI generated greeting card"
+                              className="w-full h-full object-contain animate-kenburns"
+                            />
+                          </div>
                         ) : (
                           <video
                             src={generatedVideoUrl || ""}
