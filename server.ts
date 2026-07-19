@@ -105,7 +105,7 @@ app.post('/api/generate-video', async (req, res) => {
         
         const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
         
-        const blob = await hf.textToImage({
+        const blob: any = await hf.textToImage({
           model: 'black-forest-labs/FLUX.1-schnell',
           inputs: prompt
         });
@@ -125,7 +125,7 @@ app.post('/api/generate-video', async (req, res) => {
             
             // Use Gen-3 Alpha Turbo to animate the image
             const createPromise = runwayClient.imageToVideo.create({
-              model: 'gen3a_turbo',
+              model: 'gen3a_turbo' as any,
               promptImage: dataUrl,
               promptText: prompt,
             });

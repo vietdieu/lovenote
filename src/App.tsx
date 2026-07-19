@@ -97,6 +97,47 @@ export default function App() {
   const [decorColor, setDecorColor] = useState<string>('#f43f5e');
   const [selectedDecorId, setSelectedDecorId] = useState<number | null>(null);
 
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    const checkIfInstalled = () => {
+      if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
+        setIsAppInstalled(true);
+      }
+    };
+    checkIfInstalled();
+
+    window.addEventListener('appinstalled', () => {
+      setIsAppInstalled(true);
+      setDeferredPrompt(null);
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setIsAppInstalled(true);
+        setDeferredPrompt(null);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
+
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
   const [videoGenerationStep, setVideoGenerationStep] = useState(0);
@@ -173,7 +214,7 @@ export default function App() {
 
   const today = new Date();
   const [title, setTitle] = useState("Nhập chủ đề");
-  const [message, setMessage] = useState("Hãy vào Tùy chỉnh để cài đặt.");
+  const [message, setMessage] = useState("Hãy vào Tùy chỉnh để thực hiện.");
   const baseConfig = sceneConfig[scene];
   const chosenColor = textColors.find(c => c.id === textColor);
   const config = (chosenColor && chosenColor.id !== 'default') 
@@ -453,7 +494,7 @@ export default function App() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="flex bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
+              className="flex flex-wrap max-w-[calc(100vw-32px)] sm:max-w-xl bg-white/95 p-2 rounded-2xl shadow-xl gap-1.5 sm:gap-2 justify-start items-center border border-rose-100/50"
             >
               <button onClick={cycleBgStyle} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Sparkles size={18} className="mb-0.5 sm:mb-1" />
@@ -576,6 +617,10 @@ export default function App() {
               <button onClick={() => setIsEditing(!isEditing)} className={`p-1.5 sm:p-2 rounded-xl transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] ${isEditing ? "bg-rose-100 text-rose-700" : "text-emerald-800 hover:bg-emerald-50"}`}>
                 {isEditing ? <Check size={18} className="mb-0.5 sm:mb-1" /> : <PenTool size={18} className="mb-0.5 sm:mb-1" />}
                 <span>{isEditing ? "Lưu lại" : "Chỉnh sửa"}</span>
+              </button>
+              <button onClick={handleInstallClick} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
+                <Heart size={18} className={`mb-0.5 sm:mb-1 text-rose-500 ${isAppInstalled ? "" : "animate-pulse"}`} fill={isAppInstalled ? "currentColor" : "none"} />
+                <span className="font-medium text-[10px] sm:text-xs text-rose-700">{isAppInstalled ? "Đã cài" : "Cài đặt"}</span>
               </button>
               <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Video size={18} className="mb-0.5 sm:mb-1" />
@@ -869,6 +914,61 @@ export default function App() {
                   )}
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* PWA Installation Guidance Modal */}
+      <AnimatePresence>
+        {showInstallGuide && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative overflow-hidden border border-rose-100 flex flex-col items-center text-center"
+            >
+              {/* App Icon Circle */}
+              <div className="w-20 h-20 bg-rose-50 rounded-2xl flex items-center justify-center border-2 border-rose-100 shadow-md mb-4 relative overflow-hidden">
+                <img src="/pwa_heart_icon.jpg" alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              </div>
+
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Cài đặt ứng dụng Mylove</h3>
+              <p className="text-sm text-rose-500 font-medium mb-6">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
+
+              <div className="text-left bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 w-full mb-6 space-y-4">
+                {/* iOS instructions */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800 mb-1 flex items-center gap-1.5">
+                    <span>📱</span> Trên iPhone / iPad (Safari):
+                  </h4>
+                  <ol className="text-xs text-gray-600 list-decimal pl-4 space-y-1">
+                    <li>Nhấn vào biểu tượng <strong>Chia sẻ (Share) 📤</strong> trên thanh công cụ Safari.</li>
+                    <li>Cuộn xuống dưới và chọn <strong>"Thêm vào MH chính" (Add to Home Screen) ➕</strong>.</li>
+                    <li>Nhấn <strong>"Thêm" (Add)</strong> ở góc phải để hoàn tất.</li>
+                  </ol>
+                </div>
+
+                {/* Android / Desktop instructions */}
+                <div className="pt-3 border-t border-rose-100/30">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800 mb-1 flex items-center gap-1.5">
+                    <span>💻</span> Trên Android / Chrome / Windows:
+                  </h4>
+                  <ol className="text-xs text-gray-600 list-decimal pl-4 space-y-1">
+                    <li>Nhấn vào biểu tượng dấu <strong>3 chấm (Menu)</strong> ở góc trên bên phải trình duyệt.</li>
+                    <li>Chọn <strong>"Cài đặt ứng dụng" (Install App)</strong> hoặc click biểu tượng tải xuống 📥 trên thanh địa chỉ.</li>
+                    <li>Xác nhận <strong>Cài đặt</strong> để đưa ứng dụng ra màn hình chính.</li>
+                  </ol>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowInstallGuide(false)}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-rose-600/20"
+              >
+                Đã hiểu
+              </button>
             </motion.div>
           </div>
         )}
