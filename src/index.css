@@ -1,0 +1,22 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;700&family=Dancing+Script:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&family=Nunito:wght@300;400;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-dancing: "Dancing Script", cursive;
+  --font-pacifico: "Pacifico", cursive;
+  --font-caveat: "Caveat", cursive;
+  --font-lora: "Lora", serif;
+  --font-nunito: "Nunito", sans-serif;
+  --font-playfair: "Playfair Display", serif;
+}
+
+@layer utilities {
+  .animate-kenburns {
+    animation: kenburns 10s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes kenburns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
