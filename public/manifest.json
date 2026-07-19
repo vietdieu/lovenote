@@ -1,0 +1,24 @@
+{
+  "name": "Mylove - Thiệp Tình Yêu",
+  "short_name": "Mylove",
+  "description": "Tạo và gửi thiệp chúc mừng, thiệp tình yêu lãng mạn cùng âm nhạc và hiệu ứng tuyệt vời.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f43f5e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
