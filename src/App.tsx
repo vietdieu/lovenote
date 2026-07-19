@@ -12,7 +12,6 @@ import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg'
 import balloonImg from './assets/images/romantic_heart_balloon_1783908331745.jpg';
 import letterImg from './assets/images/love_letter_envelope_1783908344094.jpg';
 import birdsImg from './assets/images/love_birds_1783908354466.jpg';
-import appIcon from './assets/icon-192.png';
 
 type SceneType = 'rose' | 'garden' | 'forest' | 'sunset' | 'ocean' | 'sakura' | 'sky' | 'plain';
 type BgStyleType = 'solid' | 'floating' | 'hearts' | 'grid' | 'blobs';
@@ -30,8 +29,12 @@ const fontRegistry: Record<FontStyleType, { label: string; class: string }> = {
 
 const musicTracks = [
   { id: 'none', label: 'Tắt nhạc', icon: VolumeX, url: '' },
-  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/satie-gymnopedie-no-1/Erik%20Satie%20-%20Gymnopedie%20No.%201.mp3' },
-  { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/beethoven-moonlight-sonata-1st-movement/beethoven-moonlight-sonata-1st-movement.mp3' }
+  { id: 'romantic', label: 'Tình yêu', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
+  { id: 'birthday', label: 'Sinh nhật', icon: Gift, url: 'https://archive.org/download/HappyBirthdayInstrumentalPianoViaInstrumentals.com.ng/Happy%20Birthday%20Instrumental%20Piano%20via%20instrumentals.com.ng.mp3' },
+  { id: 'lofi', label: 'Nhẹ nhàng', icon: Coffee, url: 'https://archive.org/download/lofi-study/lofi-study.mp3' },
+  { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/acoustic-vlog-music-chasing-the-breeze/Acoustic%20Vlog%20Music%20-%20Chasing%20the%20Breeze%20-%20by%20BMNC.mp3' },
+  { id: 'ai-magic', label: 'Giai điệu diệu kỳ', icon: Sparkles, url: 'https://archive.org/download/cosmic_dharma_magic_forest_zen_garden/magic_forest.mp3' },
+  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
 ];
 
 const decorRegistry: Record<DecorType, { type: 'icon' | 'image', content: ComponentType<any> | string }> = {
@@ -80,7 +83,7 @@ export default function App() {
   const [scene, setScene] = useState<SceneType>('plain');
   const [bgStyle, setBgStyle] = useState<BgStyleType>('solid');
   const [fontStyle, setFontStyle] = useState<FontStyleType>('playfair');
-  const [currentMusic, setCurrentMusic] = useState(musicTracks[1]);
+  const [currentMusic, setCurrentMusic] = useState(musicTracks[0]);
   const [showMusicMenu, setShowMusicMenu] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -92,80 +95,6 @@ export default function App() {
   const settingsMenuRef = useRef<HTMLDivElement>(null);
 
   const [decorColor, setDecorColor] = useState<string>('#f43f5e');
-  const [selectedDecorId, setSelectedDecorId] = useState<number | null>(null);
-
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isAppInstalled, setIsAppInstalled] = useState(false);
-  const [showInstallGuide, setShowInstallGuide] = useState(false);
-
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
-
-  useEffect(() => {
-    const handleGlobalInteraction = () => {
-      if (!hasInteracted) {
-        setHasInteracted(true);
-        if (audioRef.current && currentMusic.url && audioRef.current.paused) {
-          audioRef.current.play()
-            .then(() => setIsPlaying(true))
-            .catch(e => console.log('Autoplay handled on global interaction:', e));
-        }
-      }
-    };
-    
-    // Listen for any interaction anywhere on the page
-    window.addEventListener('click', handleGlobalInteraction);
-    window.addEventListener('touchstart', handleGlobalInteraction);
-    
-    return () => {
-      window.removeEventListener('click', handleGlobalInteraction);
-      window.removeEventListener('touchstart', handleGlobalInteraction);
-    };
-  }, [hasInteracted, currentMusic]);
-
-  useEffect(() => {
-    if (hasInteracted && audioRef.current && currentMusic.url) {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.log('Audio error:', e));
-    }
-  }, [currentMusic, hasInteracted]);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    const checkIfInstalled = () => {
-      if (window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone) {
-        setIsAppInstalled(true);
-      }
-    };
-    checkIfInstalled();
-
-    window.addEventListener('appinstalled', () => {
-      setIsAppInstalled(true);
-      setDeferredPrompt(null);
-    });
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setIsAppInstalled(true);
-        setDeferredPrompt(null);
-      }
-    } else {
-      setShowInstallGuide(true);
-    }
-  };
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
@@ -243,7 +172,7 @@ export default function App() {
 
   const today = new Date();
   const [title, setTitle] = useState("Nhập chủ đề");
-  const [message, setMessage] = useState("Hãy vào Tùy chỉnh để thực hiện.");
+  const [message, setMessage] = useState("Hãy vào Tùy chỉnh để cài đặt.");
   const baseConfig = sceneConfig[scene];
   const chosenColor = textColors.find(c => c.id === textColor);
   const config = (chosenColor && chosenColor.id !== 'default') 
@@ -332,24 +261,15 @@ export default function App() {
   };
 
   return (
-    <div 
-      className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
-      onClick={() => {
-        setSelectedDecorId(null);
-        if (!hasInteracted) {
-          setHasInteracted(true);
-          if (audioRef.current && currentMusic.url) {
-            audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.log('Audio error:', e));
-          }
-        }
-      }}
-    >
-      <audio 
-        ref={audioRef}
-        src={currentMusic.url || undefined} 
-        loop 
-        className="hidden" 
-      />
+    <div className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}>
+      {currentMusic.url && (
+        <audio 
+          src={currentMusic.url} 
+          autoPlay 
+          loop 
+          className="hidden" 
+        />
+      )}
       {/* Decorative background elements */}
       {bgStyle === 'floating' && (
         <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
@@ -432,14 +352,12 @@ export default function App() {
             <input 
               value={title} 
               onChange={(e) => setTitle(e.target.value)} 
-              onFocus={(e) => e.target.select()}
               className={`text-4xl md:text-6xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all`} 
               placeholder="Nhập tiêu đề..."
             />
             <textarea 
               value={message} 
               onChange={(e) => setMessage(e.target.value)} 
-              onFocus={(e) => e.target.select()}
               className={`text-2xl md:text-3xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 bg-white/20 border-2 border-dashed border-rose-300/30 rounded-lg p-2 w-full text-center focus:outline-none focus:border-rose-500/50 transition-all resize-y`} 
               placeholder="Nhập lời nhắn..."
             />
@@ -447,7 +365,7 @@ export default function App() {
         ) : (
           <>
             <h1 className={`text-5xl md:text-7xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 transition-all leading-tight ${title === "Nhập chủ đề" ? "opacity-60" : ""}`}>{title}</h1>
-            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh để cài đặt." ? "opacity-60" : ""}`}>{message}</p>
+            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh chọn Chỉnh sửa" ? "opacity-60" : ""}`}>{message}</p>
           </>
         )}
       </div>
@@ -470,11 +388,6 @@ export default function App() {
             key={item.id}
             drag
             dragMomentum={false}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setSelectedDecorId(item.id);
-            }}
-            onClick={(e) => e.stopPropagation()}
             onDragEnd={(_, info) => {
               setPlacedItems(prev => prev.map(p => p.id === item.id ? { ...p, x: p.x + info.offset.x, y: p.y + info.offset.y } : p));
             }}
@@ -492,20 +405,16 @@ export default function App() {
                 <decor.content size={48} />
               </motion.div>
             ) : (
-              <motion.div 
+              <motion.img 
+                src={decor.content as string} 
+                alt={item.type} 
+                className="w-24 h-24 object-contain mix-blend-multiply" 
+                draggable={false} 
                 animate={currentAnimate}
                 transition={currentTransition}
-                className="bg-white/95 p-2 rounded-2xl shadow-lg border-2 border-white ring-1 ring-rose-100/20 flex items-center justify-center"
-              >
-                <img 
-                  src={decor.content as string} 
-                  alt={item.type} 
-                  className="w-20 h-20 sm:w-24 sm:h-24 object-contain" 
-                  draggable={false} 
-                />
-              </motion.div>
+              />
             )}
-            <div className={`absolute -top-10 -right-6 flex flex-col gap-1 transition-opacity bg-white/50 p-1 rounded-lg z-60 ${selectedDecorId === item.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+            <div className="absolute -top-10 -right-6 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 p-1 rounded-lg z-60">
               <button onClick={() => scaleDecor(item.id, 0.2)} className="text-xs bg-white rounded-full w-5 h-5">+</button>
               <button onClick={() => scaleDecor(item.id, -0.2)} className="text-xs bg-white rounded-full w-5 h-5">-</button>
               <button onClick={() => rotateDecor(item.id, 15)} className="text-xs bg-white rounded-full w-5 h-5">↻</button>
@@ -529,7 +438,7 @@ export default function App() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="flex flex-wrap max-w-[calc(100vw-32px)] sm:max-w-xl bg-white/95 p-2 rounded-2xl shadow-xl gap-1.5 sm:gap-2 justify-start items-center border border-rose-100/50"
+              className="flex bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
             >
               <button onClick={cycleBgStyle} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Sparkles size={18} className="mb-0.5 sm:mb-1" />
@@ -560,26 +469,7 @@ export default function App() {
                       {musicTracks.map(track => (
                         <button
                           key={track.id}
-                          onClick={() => { 
-                            setCurrentMusic(track); 
-                            setShowMusicMenu(false); 
-                            if (audioRef.current) {
-                              if (track.url) {
-                                setHasInteracted(true);
-                                audioRef.current.src = track.url;
-                                audioRef.current.load();
-                                audioRef.current.play()
-                                  .then(() => setIsPlaying(true))
-                                  .catch(e => {
-                                    console.log('Audio error:', e);
-                                    setIsPlaying(false);
-                                  });
-                              } else {
-                                audioRef.current.pause();
-                                setIsPlaying(false);
-                              }
-                            }
-                          }}
+                          onClick={() => { setCurrentMusic(track); setShowMusicMenu(false); }}
                           className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-2 ${currentMusic.id === track.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
                         >
                           <track.icon size={14} />
@@ -671,10 +561,6 @@ export default function App() {
               <button onClick={() => setIsEditing(!isEditing)} className={`p-1.5 sm:p-2 rounded-xl transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] ${isEditing ? "bg-rose-100 text-rose-700" : "text-emerald-800 hover:bg-emerald-50"}`}>
                 {isEditing ? <Check size={18} className="mb-0.5 sm:mb-1" /> : <PenTool size={18} className="mb-0.5 sm:mb-1" />}
                 <span>{isEditing ? "Lưu lại" : "Chỉnh sửa"}</span>
-              </button>
-              <button onClick={handleInstallClick} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
-                <Heart size={18} className={`mb-0.5 sm:mb-1 text-rose-500 ${isAppInstalled ? "" : "animate-pulse"}`} fill={isAppInstalled ? "currentColor" : "none"} />
-                <span className="font-medium text-[10px] sm:text-xs text-rose-700">{isAppInstalled ? "Đã tải" : "Tải App"}</span>
               </button>
               <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Video size={18} className="mb-0.5 sm:mb-1" />
@@ -843,16 +729,14 @@ export default function App() {
                           generatedVideoUrl.endsWith('.gif') ||
                           generatedVideoUrl.includes('image')
                         ) ? (
-                          <div className="w-full h-full overflow-hidden">
-                            <img
-                              src={generatedVideoUrl}
-                              alt="AI generated greeting card"
-                              className="w-full h-full object-contain animate-kenburns"
-                            />
-                          </div>
+                          <img
+                            src={generatedVideoUrl}
+                            alt="AI generated greeting card"
+                            className="w-full h-full object-contain"
+                          />
                         ) : (
                           <video
-                            src={generatedVideoUrl || undefined}
+                            src={generatedVideoUrl || ""}
                             controls
                             autoPlay
                             loop
@@ -968,67 +852,6 @@ export default function App() {
                   )}
                 </div>
               )}
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* PWA Installation Guidance Modal */}
-      <AnimatePresence>
-        {showInstallGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-md w-full relative overflow-hidden border border-rose-100 flex flex-col items-center text-center"
-            >
-              {/* App Icon Circle */}
-              <div className="w-20 h-20 bg-rose-50 rounded-2xl flex items-center justify-center border-2 border-rose-100 shadow-md mb-4 relative overflow-hidden">
-                <img src={appIcon} alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-              </div>
-
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Tải ứng dụng Mylove</h3>
-              <p className="text-sm text-rose-500 font-medium mb-4">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
-              
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl mb-4 text-left">
-                <strong>Lưu ý:</strong> Trình duyệt không hiển thị nút tải nhanh tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới để đưa ứng dụng ra màn hình chính. 
-                <br/><br/>
-                <em>Mẹo nhỏ: Nếu bạn đã từng tải bị lỗi hoặc biểu tượng không hiện đúng, vui lòng <strong>XÓA</strong> biểu tượng cũ đi và tải lại trang này nhé!</em>
-              </div>
-
-              <div className="text-left bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 w-full mb-6 space-y-4">
-                {/* iOS instructions */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800 mb-1 flex items-center gap-1.5">
-                    <span>📱</span> Trên iPhone / iPad (Safari):
-                  </h4>
-                  <ol className="text-xs text-gray-600 list-decimal pl-4 space-y-1">
-                    <li>Nhấn vào biểu tượng <strong>Chia sẻ (Share) 📤</strong> trên thanh công cụ Safari.</li>
-                    <li>Cuộn xuống dưới và chọn <strong>"Thêm vào MH chính" (Add to Home Screen) ➕</strong>.</li>
-                    <li>Nhấn <strong>"Thêm" (Add)</strong> ở góc phải để hoàn tất.</li>
-                  </ol>
-                </div>
-
-                {/* Android / Desktop instructions */}
-                <div className="pt-3 border-t border-rose-100/30">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800 mb-1 flex items-center gap-1.5">
-                    <span>💻</span> Trên Android / Chrome / Windows:
-                  </h4>
-                  <ol className="text-xs text-gray-600 list-decimal pl-4 space-y-1">
-                    <li>Nhấn vào biểu tượng dấu <strong>3 chấm (Menu)</strong> ở góc trên bên phải trình duyệt.</li>
-                    <li>Chọn <strong>"Cài đặt ứng dụng" (Install App)</strong> hoặc click biểu tượng tải xuống 📥 trên thanh địa chỉ.</li>
-                    <li>Xác nhận <strong>Cài đặt</strong> để đưa ứng dụng ra màn hình chính.</li>
-                  </ol>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold text-sm transition-colors shadow-lg shadow-rose-600/20"
-              >
-                Đã hiểu
-              </button>
             </motion.div>
           </div>
         )}
