@@ -931,11 +931,15 @@ export default function App() {
             >
               {/* App Icon Circle */}
               <div className="w-20 h-20 bg-rose-50 rounded-2xl flex items-center justify-center border-2 border-rose-100 shadow-md mb-4 relative overflow-hidden">
-                <img src="/pwa_heart_icon.jpg" alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                <img src="/icon-192.png" alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               </div>
 
               <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Cài đặt ứng dụng Mylove</h3>
-              <p className="text-sm text-rose-500 font-medium mb-6">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
+              <p className="text-sm text-rose-500 font-medium mb-4">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
+              
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl mb-4 text-left">
+                <strong>Lưu ý:</strong> Trình duyệt của bạn không hỗ trợ nút cài đặt tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới.
+              </div>
 
               <div className="text-left bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 w-full mb-6 space-y-4">
                 {/* iOS instructions */}
