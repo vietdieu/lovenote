@@ -173,7 +173,7 @@ export default function App() {
 
   const today = new Date();
   const [title, setTitle] = useState("Nhập chủ đề");
-  const [message, setMessage] = useState("Hãy vào Tùy chỉnh để cài đặt.");
+  const [message, setMessage] = useState("Vào Tùy chỉnh để thiết lập nhé!");
   const baseConfig = sceneConfig[scene];
   const chosenColor = textColors.find(c => c.id === textColor);
   const config = (chosenColor && chosenColor.id !== 'default') 
@@ -453,7 +453,7 @@ export default function App() {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="flex bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
+              className="flex flex-wrap max-w-[calc(100vw-16px)] sm:max-w-none bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
             >
               <button onClick={cycleBgStyle} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Sparkles size={18} className="mb-0.5 sm:mb-1" />

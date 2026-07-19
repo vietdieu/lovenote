@@ -109,7 +109,7 @@ app.post('/api/generate-video', async (req, res) => {
           model: 'black-forest-labs/FLUX.1-schnell',
           inputs: prompt
         });
-        const arrayBuffer = await blob.arrayBuffer();
+        const arrayBuffer = await (blob as any).arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const base64 = buffer.toString('base64');
         const dataUrl = `data:image/jpeg;base64,${base64}`;
@@ -125,7 +125,7 @@ app.post('/api/generate-video', async (req, res) => {
             
             // Use Gen-3 Alpha Turbo to animate the image
             const createPromise = runwayClient.imageToVideo.create({
-              model: 'gen3a_turbo',
+              model: 'gen3a_turbo' as any,
               promptImage: dataUrl,
               promptText: prompt,
             });
