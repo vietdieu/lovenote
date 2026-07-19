@@ -12,6 +12,7 @@ import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg'
 import balloonImg from './assets/images/romantic_heart_balloon_1783908331745.jpg';
 import letterImg from './assets/images/love_letter_envelope_1783908344094.jpg';
 import birdsImg from './assets/images/love_birds_1783908354466.jpg';
+import appIcon from './assets/icon-192.png';
 
 type SceneType = 'rose' | 'garden' | 'forest' | 'sunset' | 'ocean' | 'sakura' | 'sky' | 'plain';
 type BgStyleType = 'solid' | 'floating' | 'hearts' | 'grid' | 'blobs';
@@ -100,6 +101,16 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isAppInstalled, setIsAppInstalled] = useState(false);
   const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    if (hasInteracted && audioRef.current && currentMusic.url) {
+      audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.log('Audio error:', e));
+    }
+  }, [currentMusic, hasInteracted]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -305,16 +316,17 @@ export default function App() {
   return (
     <div 
       className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
-      onClick={() => setSelectedDecorId(null)}
+      onClick={() => {
+        setSelectedDecorId(null);
+        if (!hasInteracted) setHasInteracted(true);
+      }}
     >
-      {currentMusic.url && (
-        <audio 
-          src={currentMusic.url} 
-          autoPlay 
-          loop 
-          className="hidden" 
-        />
-      )}
+      <audio 
+        ref={audioRef}
+        src={currentMusic.url || undefined} 
+        loop 
+        className="hidden" 
+      />
       {/* Decorative background elements */}
       {bgStyle === 'floating' && (
         <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
@@ -798,7 +810,7 @@ export default function App() {
                           </div>
                         ) : (
                           <video
-                            src={generatedVideoUrl || ""}
+                            src={generatedVideoUrl || undefined}
                             controls
                             autoPlay
                             loop
@@ -931,14 +943,16 @@ export default function App() {
             >
               {/* App Icon Circle */}
               <div className="w-20 h-20 bg-rose-50 rounded-2xl flex items-center justify-center border-2 border-rose-100 shadow-md mb-4 relative overflow-hidden">
-                <img src="/icon-192.png" alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                <img src={appIcon} alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               </div>
 
               <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Cài đặt ứng dụng Mylove</h3>
               <p className="text-sm text-rose-500 font-medium mb-4">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
               
               <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl mb-4 text-left">
-                <strong>Lưu ý:</strong> Trình duyệt của bạn không hỗ trợ nút cài đặt tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới.
+                <strong>Lưu ý:</strong> Trình duyệt không hiển thị nút cài đặt tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới. 
+                <br/><br/>
+                <em>Lưu ý quan trọng: Nếu bạn đã từng thêm biểu tượng bị lỗi (chữ O nền xám) ra màn hình, vui lòng <strong>XÓA</strong> biểu tượng cũ đó đi, sau đó tải lại trang này thì nút Cài đặt tự động mới có thể xuất hiện!</em>
               </div>
 
               <div className="text-left bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 w-full mb-6 space-y-4">
