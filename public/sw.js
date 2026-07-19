@@ -19,11 +19,32 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // DO NOT intercept:
+  // 1. API calls
+  // 2. Audio/Video media (which require HTTP Range Requests)
+  // 3. External/cross-origin requests (e.g., archive.org, mixkit.co, etc.)
+  if (
+    url.pathname.startsWith('/api') ||
+    event.request.destination === 'audio' ||
+    event.request.destination === 'video' ||
+    url.pathname.endsWith('.mp3') ||
+    url.pathname.endsWith('.mp4') ||
+    !event.request.url.startsWith(self.location.origin)
+  ) {
+    return; // Let the browser handle natively
+  }
+
   event.respondWith(
     caches.match(event.request).then(response => {
       return response || fetch(event.request);
     }).catch(() => {
-      return caches.match('/');
+      // Only return SPA index.html for navigation requests
+      if (event.request.mode === 'navigate') {
+        return caches.match('/');
+      }
+      return Promise.reject();
     })
   );
 });

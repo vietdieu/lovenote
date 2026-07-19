@@ -30,12 +30,8 @@ const fontRegistry: Record<FontStyleType, { label: string; class: string }> = {
 
 const musicTracks = [
   { id: 'none', label: 'Tắt nhạc', icon: VolumeX, url: '' },
-  { id: 'romantic', label: 'Tình yêu', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
-  { id: 'birthday', label: 'Sinh nhật', icon: Gift, url: 'https://archive.org/download/HappyBirthdayInstrumentalPianoViaInstrumentals.com.ng/Happy%20Birthday%20Instrumental%20Piano%20via%20instrumentals.com.ng.mp3' },
-  { id: 'lofi', label: 'Nhẹ nhàng', icon: Coffee, url: 'https://archive.org/download/lofi-study/lofi-study.mp3' },
-  { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/acoustic-vlog-music-chasing-the-breeze/Acoustic%20Vlog%20Music%20-%20Chasing%20the%20Breeze%20-%20by%20BMNC.mp3' },
-  { id: 'ai-magic', label: 'Giai điệu diệu kỳ', icon: Sparkles, url: 'https://archive.org/download/cosmic_dharma_magic_forest_zen_garden/magic_forest.mp3' },
-  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
+  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/satie-gymnopedie-no-1/Erik%20Satie%20-%20Gymnopedie%20No.%201.mp3' },
+  { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/beethoven-moonlight-sonata-1st-movement/beethoven-moonlight-sonata-1st-movement.mp3' }
 ];
 
 const decorRegistry: Record<DecorType, { type: 'icon' | 'image', content: ComponentType<any> | string }> = {
@@ -84,7 +80,7 @@ export default function App() {
   const [scene, setScene] = useState<SceneType>('plain');
   const [bgStyle, setBgStyle] = useState<BgStyleType>('solid');
   const [fontStyle, setFontStyle] = useState<FontStyleType>('playfair');
-  const [currentMusic, setCurrentMusic] = useState(musicTracks[0]);
+  const [currentMusic, setCurrentMusic] = useState(musicTracks[1]);
   const [showMusicMenu, setShowMusicMenu] = useState(false);
   const [showPalette, setShowPalette] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -105,6 +101,28 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalInteraction = () => {
+      if (!hasInteracted) {
+        setHasInteracted(true);
+        if (audioRef.current && currentMusic.url && audioRef.current.paused) {
+          audioRef.current.play()
+            .then(() => setIsPlaying(true))
+            .catch(e => console.log('Autoplay handled on global interaction:', e));
+        }
+      }
+    };
+    
+    // Listen for any interaction anywhere on the page
+    window.addEventListener('click', handleGlobalInteraction);
+    window.addEventListener('touchstart', handleGlobalInteraction);
+    
+    return () => {
+      window.removeEventListener('click', handleGlobalInteraction);
+      window.removeEventListener('touchstart', handleGlobalInteraction);
+    };
+  }, [hasInteracted, currentMusic]);
 
   useEffect(() => {
     if (hasInteracted && audioRef.current && currentMusic.url) {
@@ -318,7 +336,12 @@ export default function App() {
       className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
       onClick={() => {
         setSelectedDecorId(null);
-        if (!hasInteracted) setHasInteracted(true);
+        if (!hasInteracted) {
+          setHasInteracted(true);
+          if (audioRef.current && currentMusic.url) {
+            audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.log('Audio error:', e));
+          }
+        }
       }}
     >
       <audio 
@@ -537,7 +560,26 @@ export default function App() {
                       {musicTracks.map(track => (
                         <button
                           key={track.id}
-                          onClick={() => { setCurrentMusic(track); setShowMusicMenu(false); }}
+                          onClick={() => { 
+                            setCurrentMusic(track); 
+                            setShowMusicMenu(false); 
+                            if (audioRef.current) {
+                              if (track.url) {
+                                setHasInteracted(true);
+                                audioRef.current.src = track.url;
+                                audioRef.current.load();
+                                audioRef.current.play()
+                                  .then(() => setIsPlaying(true))
+                                  .catch(e => {
+                                    console.log('Audio error:', e);
+                                    setIsPlaying(false);
+                                  });
+                              } else {
+                                audioRef.current.pause();
+                                setIsPlaying(false);
+                              }
+                            }
+                          }}
                           className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-2 ${currentMusic.id === track.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
                         >
                           <track.icon size={14} />
@@ -632,7 +674,7 @@ export default function App() {
               </button>
               <button onClick={handleInstallClick} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Heart size={18} className={`mb-0.5 sm:mb-1 text-rose-500 ${isAppInstalled ? "" : "animate-pulse"}`} fill={isAppInstalled ? "currentColor" : "none"} />
-                <span className="font-medium text-[10px] sm:text-xs text-rose-700">{isAppInstalled ? "Đã cài" : "Cài đặt"}</span>
+                <span className="font-medium text-[10px] sm:text-xs text-rose-700">{isAppInstalled ? "Đã tải" : "Tải App"}</span>
               </button>
               <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Video size={18} className="mb-0.5 sm:mb-1" />
@@ -946,13 +988,13 @@ export default function App() {
                 <img src={appIcon} alt="Mylove App Icon" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               </div>
 
-              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Cài đặt ứng dụng Mylove</h3>
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">Tải ứng dụng Mylove</h3>
               <p className="text-sm text-rose-500 font-medium mb-4">Sở hữu biểu tượng Trái Tim ngọt ngào trên màn hình!</p>
               
               <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-xl mb-4 text-left">
-                <strong>Lưu ý:</strong> Trình duyệt không hiển thị nút cài đặt tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới. 
+                <strong>Lưu ý:</strong> Trình duyệt không hiển thị nút tải nhanh tự động. Vui lòng làm theo hướng dẫn thủ công bên dưới để đưa ứng dụng ra màn hình chính. 
                 <br/><br/>
-                <em>Lưu ý quan trọng: Nếu bạn đã từng thêm biểu tượng bị lỗi (chữ O nền xám) ra màn hình, vui lòng <strong>XÓA</strong> biểu tượng cũ đó đi, sau đó tải lại trang này thì nút Cài đặt tự động mới có thể xuất hiện!</em>
+                <em>Mẹo nhỏ: Nếu bạn đã từng tải bị lỗi hoặc biểu tượng không hiện đúng, vui lòng <strong>XÓA</strong> biểu tượng cũ đi và tải lại trang này nhé!</em>
               </div>
 
               <div className="text-left bg-rose-50/50 border border-rose-100/50 rounded-2xl p-4 w-full mb-6 space-y-4">
