@@ -89,6 +89,37 @@ async function discoverModels(apiBase: string, cleanBase: string, apiKey: string
   return discovered;
 }
 
+function getVisualPrompt(scene: string, placedItems: any[]): string {
+  const decorTypes = placedItems?.map((p: any) => p.type).join(', ') || 'hearts';
+  let themeDescription = '';
+  switch (scene) {
+    case 'rose':
+      themeDescription = 'A beautiful romantic scenic background filled with red roses and warm ambient glowing lights, love theme, cinematic';
+      break;
+    case 'garden':
+      themeDescription = 'A beautiful lush green romantic garden background filled with blooming colorful flowers and soft morning sunlight';
+      break;
+    case 'forest':
+      themeDescription = 'A beautiful magical enchanted romantic forest background with glowing particles and emerald trees under moonlight';
+      break;
+    case 'sunset':
+      themeDescription = 'A breathtaking romantic sunset background over hills with warm golden orange skies and flying paper hearts';
+      break;
+    case 'ocean':
+      themeDescription = 'A serene beautiful romantic ocean background with a sandy beach at sunset, soft waves, clear blue skies';
+      break;
+    case 'sakura':
+      themeDescription = 'A dreamlike romantic Japanese garden background with blooming pink cherry blossom trees and falling sakura petals';
+      break;
+    case 'sky':
+      themeDescription = 'A magical whimsical romantic sky background with pastel clouds, stars, and soft warm lighting';
+      break;
+    default:
+      themeDescription = 'A minimalist, elegant aesthetic pastel gradient background for a love note';
+  }
+  return `${themeDescription}. Decorated with beautifully arranged elements: ${decorTypes}. Heartwarming, cozy atmosphere, high quality, 4k, masterpiece, no text, no words, textless, clean background.`;
+}
+
 // API Route for video generation
 app.post('/api/generate-video', async (req, res) => {
   try {
@@ -103,7 +134,7 @@ app.post('/api/generate-video', async (req, res) => {
         const { HfInference } = await import('@huggingface/inference');
         const hf = new HfInference(huggingKey);
         
-        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        const prompt = getVisualPrompt(scene, placedItems);
         
         const blob = await hf.textToImage({
           model: 'black-forest-labs/FLUX.1-schnell',
@@ -162,7 +193,7 @@ app.post('/api/generate-video', async (req, res) => {
       try {
         fal.config({ credentials: falKey });
         
-        const prompt = `A beautiful animated greeting card video with theme ${scene}. Title: "${title}". Message: "${message}". Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. High quality, 4k, trending on artstation.`;
+        const prompt = getVisualPrompt(scene, placedItems);
         
         const result: any = await fal.subscribe("fal-ai/pika", {
           input: {
@@ -307,7 +338,7 @@ app.post('/api/generate-video', async (req, res) => {
         if (conf.type === 'video') {
           bodies.push({
             model: m,
-            prompt: `A beautiful animated greeting card with theme ${scene}. Title: "${title}". Message: "${message}". Floating decor: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}.`,
+            prompt: getVisualPrompt(scene, placedItems),
             title,
             message,
             scene,
@@ -321,7 +352,7 @@ app.post('/api/generate-video', async (req, res) => {
         } else if (conf.type === 'image') {
           bodies.push({
             model: m,
-            prompt: `A beautiful romantic greeting card with theme ${scene}. Title text is: "${title}". Description: "${message}". Hand-drawn style, high resolution, highly detailed, heartwarming, 16:9.`,
+            prompt: getVisualPrompt(scene, placedItems),
             n: 1,
             size: "1024x1024",
             aspect_ratio: "16:9",
@@ -333,7 +364,7 @@ app.post('/api/generate-video', async (req, res) => {
             messages: [
               {
                 role: "user",
-                content: `Please generate a beautiful public URL of an animated greeting card video. Theme: ${scene}. Title: "${title}". Message: "${message}". Put the URL clearly in the response.`
+                content: `Please generate a beautiful public URL of an animated romantic textless greeting card background. Theme: ${scene}. Floating decorations: ${placedItems?.map((p: any) => p.type).join(', ') || 'hearts'}. Put the URL clearly in the response.`
               }
             ]
           });

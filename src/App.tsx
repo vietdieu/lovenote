@@ -735,7 +735,7 @@ export default function App() {
                 <div className="w-full flex flex-col items-center">
                   {videoGenResult && videoGenResult.success ? (
                     <div className="w-full flex flex-col items-center">
-                      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-inner border border-gray-100 mb-4 relative">
+                      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-inner border border-gray-100 mb-4 relative flex items-center justify-center">
                         {generatedVideoUrl && (
                           generatedVideoUrl.endsWith('.png') ||
                           generatedVideoUrl.endsWith('.jpg') ||
@@ -744,7 +744,7 @@ export default function App() {
                           generatedVideoUrl.endsWith('.gif') ||
                           generatedVideoUrl.includes('image')
                         ) ? (
-                          <div className="w-full h-full overflow-hidden">
+                          <div className="w-full h-full overflow-hidden absolute inset-0">
                             <img
                               src={generatedVideoUrl}
                               alt="AI generated greeting card"
@@ -757,9 +757,80 @@ export default function App() {
                             controls
                             autoPlay
                             loop
-                            className="w-full h-full object-contain"
+                            className="w-full h-full object-contain absolute inset-0"
                           />
                         )}
+
+                        {/* HIGH QUALITY OVERLAY FOR TEXT AND DECOR */}
+                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4 z-10 overflow-hidden select-none">
+                          <div className="text-center w-full max-w-full scale-75 sm:scale-90 transition-transform origin-center">
+                            <h1 className={`text-2xl sm:text-3xl font-bold ${fontRegistry[fontStyle].class} ${config.text} mb-2 drop-shadow-[0_2px_4px_rgba(255,255,255,0.85)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-tight`}>
+                              {title}
+                            </h1>
+                            <p className={`text-base sm:text-lg font-medium ${fontRegistry[fontStyle].class} ${config.secondary} drop-shadow-[0_1.5px_3px_rgba(255,255,255,0.85)] dark:drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.85)] leading-relaxed`}>
+                              {message}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Overlay Placed Items */}
+                        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl z-20">
+                          {placedItems.map(item => {
+                            const decor = decorRegistry[item.type];
+                            if (!decor) return null;
+
+                            const currentAnimate = item.animation === 'float' ? { y: [0, -10, 0], x: [0, 5, -5, 0] } :
+                                                  item.animation === 'pulse' ? { scale: [1, 1.2, 1], opacity: [1, 0.6, 1] } :
+                                                  item.animation === 'spin' ? { rotate: [0, 360] } :
+                                                  {};
+                            const currentTransition = item.animation === 'float' ? { duration: 4, repeat: Infinity, ease: 'easeInOut' } :
+                                                     item.animation === 'pulse' ? { duration: 1.5, repeat: Infinity, ease: 'easeInOut' } :
+                                                     item.animation === 'spin' ? { duration: 4, repeat: Infinity, ease: 'linear' } :
+                                                     {};
+
+                            // Scale down coordinate mapping for the preview box (relative coordinates starting from the center)
+                            const scaleFactor = 0.35; 
+                            const displayX = item.x * scaleFactor;
+                            const displayY = item.y * scaleFactor;
+
+                            return (
+                              <motion.div
+                                key={`preview-${item.id}`}
+                                initial={{ x: displayX, y: displayY, scale: item.scale * 0.45, rotate: item.rotation }}
+                                animate={{ x: displayX, y: displayY, scale: item.scale * 0.45, rotate: item.rotation }}
+                                className="absolute"
+                                style={{
+                                  left: '50%',
+                                  top: '50%',
+                                }}
+                              >
+                                {decor.type === 'icon' ? (
+                                  <motion.div 
+                                    className={item.color ? "" : config.accent} 
+                                    style={item.color ? { color: item.color } : {}}
+                                    animate={currentAnimate}
+                                    transition={currentTransition}
+                                  >
+                                    <decor.content size={24} />
+                                  </motion.div>
+                                ) : (
+                                  <motion.div 
+                                    animate={currentAnimate}
+                                    transition={currentTransition}
+                                    className="bg-white/95 p-1 rounded-lg shadow-md border border-white flex items-center justify-center"
+                                  >
+                                    <img 
+                                      src={decor.content as string} 
+                                      alt={item.type} 
+                                      className="w-10 h-10 object-contain" 
+                                      draggable={false} 
+                                    />
+                                  </motion.div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
                       </div>
 
                       {/* Mode details */}
