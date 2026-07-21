@@ -185,6 +185,50 @@ export default function App() {
   const [videoGenResult, setVideoGenResult] = useState<any>(null);
   const [isExportingImage, setIsExportingImage] = useState(false);
 
+  const getWordSpacingWidth = (font: FontStyleType) => {
+    switch (font) {
+      case 'dancing':
+        return '0.44em';
+      case 'pacifico':
+        return '0.40em';
+      case 'caveat':
+        return '0.38em';
+      case 'playfair':
+      case 'lora':
+        return '0.34em';
+      case 'nunito':
+      default:
+        return '0.32em';
+    }
+  };
+
+  const renderSpannedText = (text: string) => {
+    if (!text) return null;
+    const wordSpacing = getWordSpacingWidth(fontStyle);
+    return text.split('\n').map((line, lineIdx) => {
+      const words = line.split(' ');
+      return (
+        <span key={lineIdx} className="block">
+          {words.map((word, wordIdx) => {
+            const isLastWord = wordIdx === words.length - 1;
+            return (
+              <span 
+                key={wordIdx} 
+                className="inline-block" 
+                style={{ 
+                  whiteSpace: 'pre',
+                  marginRight: isLastWord ? '0px' : wordSpacing
+                }}
+              >
+                {word}
+              </span>
+            );
+          })}
+        </span>
+      );
+    });
+  };
+
   const downloadCompleteCardImage = async () => {
     const container = document.getElementById('generated-card-container');
     if (!container) return;
@@ -255,6 +299,8 @@ export default function App() {
                 }
               }
             }
+
+            // No extra spacing replacement needed since words are individually spanned with proper white-space
           }
         }
       });
@@ -549,8 +595,12 @@ export default function App() {
           </>
         ) : (
           <>
-            <h1 className={`text-5xl md:text-7xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 transition-all leading-tight ${title === "Nhập chủ đề" ? "opacity-60" : ""}`}>{title}</h1>
-            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh để cài đặt." ? "opacity-60" : ""}`}>{message}</p>
+            <h1 className={`text-5xl md:text-7xl ${fontRegistry[fontStyle].class} ${config.text} mb-4 transition-all leading-tight ${title === "Nhập chủ đề" ? "opacity-60" : ""}`}>
+              {renderSpannedText(title)}
+            </h1>
+            <p className={`text-3xl md:text-4xl ${fontRegistry[fontStyle].class} ${config.secondary} mb-8 transition-all leading-relaxed ${message === "Hãy vào Tùy chỉnh để cài đặt." ? "opacity-60" : ""}`}>
+              {renderSpannedText(message)}
+            </p>
           </>
         )}
       </div>
@@ -946,10 +996,10 @@ export default function App() {
                         <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4 z-10 overflow-hidden select-none">
                           <div className="text-center w-full max-w-full scale-75 sm:scale-90 transition-transform origin-center">
                             <h1 className={`text-2xl sm:text-3xl font-bold ${fontRegistry[fontStyle].class} ${config.text} mb-2 drop-shadow-[0_2px_4px_rgba(255,255,255,0.85)] dark:drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] leading-tight`}>
-                              {title}
+                              {renderSpannedText(title)}
                             </h1>
                             <p className={`text-base sm:text-lg font-medium ${fontRegistry[fontStyle].class} ${config.secondary} drop-shadow-[0_1.5px_3px_rgba(255,255,255,0.85)] dark:drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.85)] leading-relaxed`}>
-                              {message}
+                              {renderSpannedText(message)}
                             </p>
                           </div>
                         </div>
