@@ -6,12 +6,93 @@
 import React, { useState, useRef, useEffect, ComponentType } from 'react';
 import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import html2canvas from 'html2canvas';
 
 import coupleImg from './assets/images/couple_romantic_icon_1783908155583.jpg';
 import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg';
 import balloonImg from './assets/images/romantic_heart_balloon_1783908331745.jpg';
 import letterImg from './assets/images/love_letter_envelope_1783908344094.jpg';
 import birdsImg from './assets/images/love_birds_1783908354466.jpg';
+
+function oklabToRgb(l: number, a_val: number, b_val: number, a: number = 1): string {
+  // OKLAB to LMS
+  const l_ = l + 0.3963377774 * a_val + 0.2158037573 * b_val;
+  const m_ = l - 0.1055613458 * a_val - 0.0638541728 * b_val;
+  const s_ = l - 0.0894841775 * a_val - 1.2914855480 * b_val;
+
+  // LMS linear
+  const l_linear = Math.pow(Math.max(0, l_), 3);
+  const m_linear = Math.pow(Math.max(0, m_), 3);
+  const s_linear = Math.pow(Math.max(0, s_), 3);
+
+  // LMS linear to Linear sRGB
+  const r_linear = +4.0767416621 * l_linear - 3.3077115913 * m_linear + 0.2309699292 * s_linear;
+  const g_linear = -1.2684380046 * l_linear + 2.6097574011 * m_linear - 0.3413193965 * s_linear;
+  const b_linear = -0.0041960863 * l_linear - 0.7034186147 * m_linear + 1.7076147010 * s_linear;
+
+  // Linear sRGB to standard sRGB (with gamma correction)
+  const gamma = (x: number) => {
+    return x > 0.0031308 ? 1.055 * Math.pow(x, 1 / 2.4) - 0.055 : 12.92 * x;
+  };
+
+  const r = Math.min(255, Math.max(0, Math.round(gamma(r_linear) * 255)));
+  const g = Math.min(255, Math.max(0, Math.round(gamma(g_linear) * 255)));
+  const b = Math.min(255, Math.max(0, Math.round(gamma(b_linear) * 255)));
+
+  if (a === 1) {
+    return `rgb(${r}, ${g}, ${b})`;
+  } else {
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+}
+
+function oklchToRgb(l: number, c: number, h: number, a: number = 1): string {
+  // Convert hue to radians
+  const hRad = (h * Math.PI) / 180;
+  const a_val = c * Math.cos(hRad);
+  const b_val = c * Math.sin(hRad);
+
+  return oklabToRgb(l, a_val, b_val, a);
+}
+
+function replaceOklchInString(val: string): string {
+  if (!val || typeof val !== 'string') return val;
+  
+  // Replace OKLCH
+  const oklchRegex = /oklch\(\s*([\d.%\-]+)[\s,]+([\d.%\-]+)[\s,]+([\d.%\-]+(?:deg)?)(?:\s*[\/\s,]\s*([\d.%\-]+))?\s*\)/gi;
+  let result = val.replace(oklchRegex, (match, lStr, cStr, hStr, aStr) => {
+    let l = parseFloat(lStr);
+    if (lStr.includes('%')) l = l / 100;
+    let c = parseFloat(cStr);
+    if (cStr.includes('%')) c = c / 100;
+    let h = parseFloat(hStr);
+    let a = 1;
+    if (aStr) {
+      a = parseFloat(aStr);
+      if (aStr.includes('%')) a = a / 100;
+    }
+    return oklchToRgb(l, c, h, a);
+  });
+
+  // Replace OKLAB
+  const oklabRegex = /oklab\(\s*([\d.%\-]+)[\s,]+([\d.%\-]+)[\s,]+([\d.%\-]+)(?:\s*[\/\s,]\s*([\d.%\-]+))?\s*\)/gi;
+  result = result.replace(oklabRegex, (match, lStr, aStrVal, bStrVal, alphaStr) => {
+    let l = parseFloat(lStr);
+    if (lStr.includes('%')) l = l / 100;
+    let aVal = parseFloat(aStrVal);
+    if (aStrVal.includes('%')) aVal = aVal / 100;
+    let bVal = parseFloat(bStrVal);
+    if (bStrVal.includes('%')) bVal = bVal / 100;
+    let alpha = 1;
+    if (alphaStr) {
+      alpha = parseFloat(alphaStr);
+      if (alphaStr.includes('%')) alpha = alpha / 100;
+    }
+    return oklabToRgb(l, aVal, bVal, alpha);
+  });
+
+  return result;
+}
 
 type SceneType = 'rose' | 'garden' | 'forest' | 'sunset' | 'ocean' | 'sakura' | 'sky' | 'plain';
 type BgStyleType = 'solid' | 'floating' | 'hearts' | 'grid' | 'blobs';
@@ -102,6 +183,104 @@ export default function App() {
   const [videoGenerationStep, setVideoGenerationStep] = useState(0);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [videoGenResult, setVideoGenResult] = useState<any>(null);
+  const [isExportingImage, setIsExportingImage] = useState(false);
+
+  const downloadCompleteCardImage = async () => {
+    const container = document.getElementById('generated-card-container');
+    if (!container) return;
+    
+    setIsExportingImage(true);
+    try {
+      // Use html2canvas with scale:2 for super sharp, crisp texts & decorations
+      const canvas = await html2canvas(container, {
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#000000',
+        scale: 2,
+        logging: false,
+        onclone: (clonedDoc) => {
+          // 1. Clean and convert oklch values inside all <style> blocks of the cloned doc
+          const styleTags = clonedDoc.getElementsByTagName('style');
+          for (let i = 0; i < styleTags.length; i++) {
+            const styleTag = styleTags[i];
+            if (styleTag.innerHTML) {
+              styleTag.innerHTML = replaceOklchInString(styleTag.innerHTML);
+            }
+          }
+
+          // 2. Map original computed styles to cloned elements as inline converted standard color styles
+          const clonedContainer = clonedDoc.getElementById('generated-card-container');
+          const originalContainer = document.getElementById('generated-card-container');
+          
+          if (clonedContainer && originalContainer) {
+            const clonedEls = Array.from(clonedContainer.getElementsByTagName('*'));
+            const originalEls = Array.from(originalContainer.getElementsByTagName('*'));
+            
+            // Handle container itself
+            const compContainer = window.getComputedStyle(originalContainer);
+            clonedContainer.style.color = replaceOklchInString(compContainer.color);
+            clonedContainer.style.backgroundColor = replaceOklchInString(compContainer.backgroundColor);
+            clonedContainer.style.borderColor = replaceOklchInString(compContainer.borderColor);
+            if (compContainer.backgroundImage && compContainer.backgroundImage !== 'none') {
+              clonedContainer.style.backgroundImage = replaceOklchInString(compContainer.backgroundImage);
+            }
+            if (compContainer.boxShadow && compContainer.boxShadow !== 'none') {
+              clonedContainer.style.boxShadow = replaceOklchInString(compContainer.boxShadow);
+            }
+
+            // Handle children
+            for (let i = 0; i < clonedEls.length; i++) {
+              const clonedEl = clonedEls[i] as HTMLElement;
+              const originalEl = originalEls[i] as HTMLElement;
+              if (originalEl && clonedEl) {
+                const comp = window.getComputedStyle(originalEl);
+                
+                clonedEl.style.color = replaceOklchInString(comp.color);
+                clonedEl.style.backgroundColor = replaceOklchInString(comp.backgroundColor);
+                clonedEl.style.borderColor = replaceOklchInString(comp.borderColor);
+                clonedEl.style.fill = replaceOklchInString(comp.fill);
+                clonedEl.style.stroke = replaceOklchInString(comp.stroke);
+                
+                if (comp.backgroundImage && comp.backgroundImage !== 'none') {
+                  clonedEl.style.backgroundImage = replaceOklchInString(comp.backgroundImage);
+                }
+                if (comp.boxShadow && comp.boxShadow !== 'none') {
+                  clonedEl.style.boxShadow = replaceOklchInString(comp.boxShadow);
+                }
+                
+                // Also parse any existing inline styles on the cloned element
+                const inlineStyle = clonedEl.getAttribute('style');
+                if (inlineStyle) {
+                  clonedEl.setAttribute('style', replaceOklchInString(inlineStyle));
+                }
+              }
+            }
+          }
+        }
+      });
+      
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png', 1.0);
+      link.download = `thiep-hoan-chinh-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error("Lỗi khi xuất ảnh thiệp hoàn chỉnh:", error);
+      alert("Đang tải ảnh/video gốc... (Một số nhà cung cấp ảnh nền có thể giới hạn CORS, bạn có thể tải file gốc và lưu trực tiếp)");
+      if (generatedVideoUrl) {
+        const link = document.createElement('a');
+        link.href = generatedVideoUrl;
+        link.target = '_blank';
+        link.download = 'greeting-card-raw';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } finally {
+      setIsExportingImage(false);
+    }
+  };
 
   const generateVideo = async () => {
     setIsVideoGenerating(true);
@@ -735,7 +914,7 @@ export default function App() {
                 <div className="w-full flex flex-col items-center">
                   {videoGenResult && videoGenResult.success ? (
                     <div className="w-full flex flex-col items-center">
-                      <div className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-inner border border-gray-100 mb-4 relative flex items-center justify-center">
+                      <div id="generated-card-container" className="w-full aspect-video rounded-2xl overflow-hidden bg-black shadow-inner border border-gray-100 mb-4 relative flex items-center justify-center">
                         {generatedVideoUrl && (
                           generatedVideoUrl.endsWith('.png') ||
                           generatedVideoUrl.endsWith('.jpg') ||
@@ -747,6 +926,7 @@ export default function App() {
                           <div className="w-full h-full overflow-hidden absolute inset-0">
                             <img
                               src={generatedVideoUrl}
+                              crossOrigin="anonymous"
                               alt="AI generated greeting card"
                               className="w-full h-full object-contain animate-kenburns"
                             />
@@ -754,6 +934,7 @@ export default function App() {
                         ) : (
                           <video
                             src={generatedVideoUrl || ""}
+                            crossOrigin="anonymous"
                             controls
                             autoPlay
                             loop
@@ -883,13 +1064,34 @@ export default function App() {
                         </div>
                       )}
 
-                      <div className="flex gap-3 w-full">
+                      <div className="flex flex-col sm:flex-row gap-3 w-full">
                         <button
                           onClick={() => setIsVideoModalOpen(false)}
                           className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-medium transition-colors text-sm"
                         >
                           Đóng
                         </button>
+
+                        {generatedVideoUrl && (
+                          <button
+                            onClick={downloadCompleteCardImage}
+                            disabled={isExportingImage}
+                            className="flex-1 py-3 px-4 bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white rounded-xl font-medium transition-all text-sm flex items-center justify-center gap-2 shadow-md shadow-rose-500/20 disabled:opacity-75"
+                          >
+                            {isExportingImage ? (
+                              <>
+                                <Loader2 size={16} className="animate-spin" />
+                                Đang chuẩn bị...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={16} />
+                                Tải Thiệp Có Chữ
+                              </>
+                            )}
+                          </button>
+                        )}
+
                         {generatedVideoUrl && (
                           <a
                             href={generatedVideoUrl}
@@ -900,15 +1102,15 @@ export default function App() {
                               generatedVideoUrl.endsWith('.webp') ||
                               generatedVideoUrl.endsWith('.gif') ||
                               generatedVideoUrl.includes('image'))
-                                ? "greeting-card.png"
-                                : "greeting-card.mp4"
+                                ? "greeting-card-raw.png"
+                                : "greeting-card-raw.mp4"
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-1 py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-medium transition-all text-sm flex items-center justify-center gap-2 shadow-md shadow-rose-600/20"
+                            className="flex-1 py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-medium transition-all text-sm flex items-center justify-center gap-2 shadow-md shadow-slate-800/10"
                           >
                             <Download size={16} />
-                            Tải Video
+                            Tải File Gốc AI
                           </a>
                         )}
                       </div>
